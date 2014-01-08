@@ -25,8 +25,7 @@ HAS_PYRAX = False
 try:
     import pyrax
     import pyrax.exceptions as exc
-    from pyrax import clouddatabases, clouddns, cloudloadbalancers, cloudblockstorage, cloudmonitoring, cloudnetworks
-
+    from pyrax import clouddatabases, clouddns, cloudloadbalancers, cloudblockstorage, cloudmonitoring, cloudnetworks, cloudfiles
     HAS_PYRAX = True
     pyrax.set_setting("identity_type", "rackspace")
 except ImportError:
@@ -43,6 +42,7 @@ PAGE_SIZE = 100
 VALID_RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX' 'NS', 'PTR', 'SRV', 'TXT']
 PRIORITY_RECORD_TYPES = ["MX", 'SRV']
 
+
 def __virtual__():
     """
     Only load if pyrax is available
@@ -54,20 +54,18 @@ def __virtual__():
 
 ### CLOUD SERVERS
 def list_images():
-    _auth()
-    cs = pyrax.cloudservers
+    driver = _get_driver('cs')
     output = []
-    for image in cs.flavors.list():
+    for image in driver.flavors.list():
         output.append(image.name)
     return {'load_balancers': output}
 
 
 ###CLOUD LBS
 def list_lbs():
-    _auth()
-    clb = pyrax.cloud_loadbalancers
+    driver = _get_driver('lb')
     output = {}
-    for lb in clb.list():
+    for lb in driver.list():
         out = {lb.name: {'port': lb.port, 'status': lb.status}}
         output.update(out)
     return output
@@ -395,7 +393,7 @@ def _auth():
         )
 
 
-def _get_driver(driver_type):
+def _get_driver(driver_type, region='DFW'):
     """
     Returns the appropriate diver for the specified rackspace product.
 
@@ -403,24 +401,85 @@ def _get_driver(driver_type):
         lb: Cloud Load Balancers
         db: Cloud Databases
         dns: Cloud DNS
+        bs: Cloud Block Storage
+        mon: Cloud Monitoring
+        net: Cloud Networks
+        cf: Cloud Files
+        cs: Cloud Servers
 
     :param driver_type:
+    :param region: Region
     :return: :raise TypeError:
     """
-    #TODO: Add region support
+    #TODO: Check for correct region
+    # for svc in pyrax.services:
+    # print svc, pyrax.identity.services[svc]["endpoints"].keys()
+    #
+    # load_balancer [u'DFW', u'ORD', u'SYD']
+    # compute [u'DFW', u'ORD', u'SYD']
+    # monitor ['ALL']
+    # database [u'ORD', u'DFW', u'SYD']
+    # object_cdn [u'ORD', u'DFW', u'SYD']
+    # volume [u'DFW', u'ORD', u'SYD']
+    # dns ['ALL']
+    # autoscale [u'ORD', u'DFW']
+    # backup ['ALL']
+    # object_store [u'DFW', u'ORD', u'SYD']
     _auth()
     if not isinstance(driver_type, six.string_types):
         raise TypeError("driver_type must be str or unicode object")
+    region = region.upper()
+
+    #TODO: Create global dict for all available service names
 
     if driver_type == "lb":
-        return pyrax.cloud_loadbalancers
+        if not _check_region('load_balancer', region):
+            raise TypeError(u'Service not found in region: {} {}'.format(driver_type, region))
+        return pyrax.connect_to_cloud_loadbalancers(region)
 
     if driver_type == "db":
-        return pyrax.cloud_databases
+        return pyrax.connect_to_cloud_databases(region)
 
     if driver_type == "dns":
-        return pyrax.cloud_dns
+        return pyrax.connect_to_cloud_dns()
 
-    #TODO: Add rest of drivers
+    if driver_type == "bs":
+        return pyrax.connect_to_cloud_blockstorage(region)
 
-    raise KeyError("No Driver found by: {}".format(driver_type))
+    if driver_type == "mon":
+        return pyrax.connect_to_cloud_monitoring(region)
+
+    if driver_type == "net":
+        return pyrax.connect_to_cloud_networks(region)
+
+    if driver_type == 'cf':
+        return pyrax.connect_to_cloudfiles(region)
+
+    if driver_type == 'cs':
+        return pyrax.connect_to_cloudservers(region)
+
+    raise KeyError(u"No Driver found by: {}".format(driver_type))
+
+
+def _get_endpoints(service_name):
+    _auth()
+    if service_name in pyrax.services:
+        return pyrax.services[service_name]["endpoints"].keys()
+    else:
+        error_msg = u'No service found: {}'.format(service_name)
+        logger.error(error_msg)
+        raise TypeError(error_msg)
+
+
+def _check_region(service_name, region):
+    region = region.upper()
+    regions = _get_endpoints(service_name)
+
+    if len(regions) == 1:
+        if regions[0].upper() == 'ALL':
+            return True
+
+    if region in regions:
+        return True
+
+    return False
