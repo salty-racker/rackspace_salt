@@ -64,23 +64,51 @@ def db_instance_exists(name, flavor, size, opts=False):
     return ret
 
 
-def dns_domain_exists(name, emailAddress=None, ttl=None, opts=False):
+def dns_zone_exists(name, emailAddress=None, ttl=None, opts=False):
     ret = {'name': name, 'result': True, 'comment': '', 'changes': {}}
 
-    does_exist = __salt__['rackspace.dns_domain_exists'](name, emailAddress=emailAddress, ttl=ttl)
+    does_exist = __salt__['rackspace.dns_zone_exists'](name, emailAddress=emailAddress, ttl=ttl)
 
     if not does_exist:
         if __opts__['test']:
             ret['result'] = None
-            ret['comment'] = u'DNS Domain {0} set to be created'.format(name)
+            ret['comment'] = u'DNS Zone {0} set to be created'.format(name)
             return ret
 
-        base_domain_exists = __salt__['rackspace.dns_domain_exists'](name)
-        if not base_domain_exists:
-            created = __salt__['rackspace.dns_domain_create'](name, emailAddress=emailAddress, ttl=ttl)
+        base_zone_exists = __salt__['rackspace.dns_zone_exists'](name)
+        if not base_zone_exists:
+            created = __salt__['rackspace.dns_zone_create'](name, emailAddress=emailAddress, ttl=ttl)
             ret['changes']['new'] = created
         else:
-            updated = __salt__['rackspace.dns_domain_update'](name, emailAddress=emailAddress, ttl=ttl)
+            updated = __salt__['rackspace.dns_zone_update'](name, emailAddress=emailAddress, ttl=ttl)
+            ret['changes']['updated'] = updated
+    else:
+        ret['comment'] = u'{0} exists'.format(name)
+
+    return ret
+
+
+def dns_record_exists(name, zone_name, record_type, data, ttl=None, priority=None, comment=None, opts=False):
+    ret = {'name': name, 'result': True, 'comment': '', 'changes': {}}
+
+    does_exist = __salt__['rackspace.dns_record_exists'](zone_name, name, record_type, data=data, ttl=ttl,
+                                                         priority=priority)
+
+    #TODO: Deal with overlapping FQDN with A, AAAA and CNAME
+    if not does_exist:
+        if __opts__['test']:
+            ret['result'] = None
+            ret['comment'] = u'DNS Record for {0} set to be created'.format(name)
+            return ret
+
+        base_record_exists = __salt__['rackspace.dns_record_exists'](zone_name, name, record_type, None)
+        if not base_record_exists:
+            created = __salt__['rackspace.dns_record_create'](zone_name, name, record_type, data, ttl=600, priority=priority, comment=comment)
+            ret['changes']['new'] = created
+
+        else:
+            updated = __salt__['rackspace.dns_record_update'](zone_name, name, record_type, data, ttl=ttl,
+                                                              priority=priority, comment=comment)
             ret['changes']['updated'] = updated
     else:
         ret['comment'] = u'{0} exists'.format(name)
