@@ -4,6 +4,11 @@ setup_db:
     - size: 1
     - flavor: 1GB Instance
 
+setup_db_2:
+  rackspace.db_instance_exists:
+    - name: testing_new_db
+    - size: 1
+    - flavor: 1GB Instance
 
 setup_domain:
   rackspace.dns_zone_exists:
@@ -17,7 +22,26 @@ setup_records:
     - name: testing.testingrackspacesalt1.com
     - record_type: A
     - data: 127.0.0.1
+    - allow_multiple_records: True
     - require:
       - rackspace: setup_domain
 
+setup_records2:
+  rackspace.dns_record_exists:
+    - zone_name: testingrackspacesalt1.com
+    - name: testing.testingrackspacesalt1.com
+    - record_type: A
+    - data: 127.0.0.2
+    - allow_multiple_records: True
+    - require:
+      - rackspace: setup_domain
 
+setup_records3:
+  rackspace.dns_record_exists:
+    - zone_name: testingrackspacesalt1.com
+    - name: testing.testingrackspacesalt1.com
+    - record_type: A
+    - data: 127.0.0.3
+    - allow_multiple_records: True
+    - require:
+      - rackspace: setup_domain

@@ -88,28 +88,53 @@ def dns_zone_exists(name, emailAddress=None, ttl=None, opts=False):
     return ret
 
 
-def dns_record_exists(name, zone_name, record_type, data, ttl=None, priority=None, comment=None, opts=False):
+def dns_record_exists(name, zone_name, record_type, data, ttl=None, priority=None, comment=None, allow_multiple_records=False, opts=False):
     ret = {'name': name, 'result': True, 'comment': '', 'changes': {}}
 
     does_exist = __salt__['rackspace.dns_record_exists'](zone_name, name, record_type, data=data, ttl=ttl,
                                                          priority=priority)
-
-    #TODO: Deal with overlapping FQDN with A, AAAA and CNAME
     if not does_exist:
         if __opts__['test']:
             ret['result'] = None
-            ret['comment'] = u'DNS Record for {0} set to be created'.format(name)
+            ret['comment'] = u'DNS Record for {0} set to be created/updated'.format(name)
             return ret
 
-        base_record_exists = __salt__['rackspace.dns_record_exists'](zone_name, name, record_type, None)
+
+        #passing none for data as we are only concerned with finding a record of the same type
+        base_record_exists = __salt__['rackspace.dns_record_exists'](zone_name, name, record_type, data=None)
+
         if not base_record_exists:
-            created = __salt__['rackspace.dns_record_create'](zone_name, name, record_type, data, ttl=600, priority=priority, comment=comment)
+            created = __salt__['rackspace.dns_record_create'](zone_name, name, record_type, data, ttl=600,
+                                                              priority=priority, comment=comment)
             ret['changes']['new'] = created
 
         else:
-            updated = __salt__['rackspace.dns_record_update'](zone_name, name, record_type, data, ttl=ttl,
-                                                              priority=priority, comment=comment)
-            ret['changes']['updated'] = updated
+            #TODO: Deal with overlapping FQDN with A, AAAA and CNAME
+            #We've found there is a base record
+            #Checking to see if we need to update or add another
+            #We are choosing to update if only the TTL or Priority are different
+            needs_updating = __salt__['rackspace.dns_record_exists'](zone_name, name, record_type, data=data)
+            if needs_updating:
+                updated = __salt__['rackspace.dns_record_update'](
+                    zone_name, name, record_type, data, ttl=ttl, priority=priority, comment=comment
+                )
+                ret['changes']['updated'] = updated
+
+            #If this is not the case we check for allow multiple records
+            elif allow_multiple_records:
+
+                #if multiple records are allowed we create a "new" record with the same record type
+                created = __salt__['rackspace.dns_record_create'](
+                    zone_name, name, record_type, data, ttl=600, priority=priority, comment=comment
+                )
+                ret['changes']['new'] = created
+
+            #if they are not we are updating the old with the new data
+            else:
+                updated = __salt__['rackspace.dns_record_update'](
+                    zone_name, name, record_type, data, ttl=ttl, priority=priority, comment=comment
+                )
+                ret['changes']['updated'] = updated
     else:
         ret['comment'] = u'{0} exists'.format(name)
 
