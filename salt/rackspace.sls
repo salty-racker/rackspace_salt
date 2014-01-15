@@ -1,20 +1,34 @@
+python-pip:
+  pkg.installed
+
+pyrax:
+  pip.installed:
+    - require:
+      - pkg: python-pip
+
 setup_db:
   rackspace.db_instance_exists:
     - name: test123
     - size: 1
     - flavor: 1GB Instance
+    - require:
+      - pip: pyrax
 
 setup_db_2:
   rackspace.db_instance_exists:
     - name: testing_new_db
     - size: 1
     - flavor: 1GB Instance
+    - require:
+      - pip: pyrax
 
 setup_domain:
   rackspace.dns_zone_exists:
     - name: testingrackspacesalt1.com
     - emailAddress: bruce.stringer@rackspace.com
     - ttl: 600
+    - require:
+      - pip: pyrax
 
 setup_records:
   rackspace.dns_record_exists:
