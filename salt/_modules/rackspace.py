@@ -167,6 +167,48 @@ def dns_zone_update(name, **kwargs):
     return _dns_zone_to_dict(zone)
 
 
+def dns_zone_get(name, show_records=False):
+    """
+    Retrieves a specific DNS zone by name
+    :param name: The name of the zone
+    :return: A dict of the zone.
+    """
+
+    zone = _dns_zone_get_by_name(name)
+    assert isinstance(zone, clouddns.CloudDNSDomain)
+    return _dns_zone_to_dict(zone, show_records=show_records)
+
+
+def dns_zone_delete(name, delete_subdomains=False):
+    """
+    Removes specified dns zone
+    :param name: The name of the zone
+    :param delete_subdomains: Determines if subdomains should be deleted
+    :return: A Dict with all the names of a zones dealt with
+    """
+    driver = _get_driver('dns')
+    assert isinstance(driver, clouddns.CloudDNSClient)
+
+    try:
+        zone = _dns_zone_get_by_name(name)
+    except exc.NotFound:
+        raise
+    assert isinstance(zone, clouddns.CloudDNSDomain)
+
+    output = {}
+
+    if delete_subdomains:
+        for subdomain in driver.get_subdomain_iterator(zone):
+            sub_name = subdomain.name
+            subdomain.delete()
+            output[sub_name] = True
+
+    zone.delete()
+    output[name] = True
+
+    return output
+
+
 def dns_record_list(zone_name):
     """
     Returns a list of Records for the given DNS zone.
