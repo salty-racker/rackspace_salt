@@ -67,8 +67,13 @@ def db_instance_exists(name, flavor, size, opts=False):
 
 def db_database_exists(name, instance_name, character_set=None, collate=None):
     ret = {'name': name, 'result': True, 'comment': '', 'changes': {}}
-
-    does_exist = __salt__['rackspace.db_database_exists'](name, instance_name)
+    try:
+        does_exist = __salt__['rackspace.db_database_exists'](name, instance_name)
+    except exc.ClientException as e:
+            ret['result'] = False
+            msg = u'Instance {0} is not ready, API Response: {1}'
+            ret['comment'] = msg.format(instance_name, e.message)
+            return ret
 
     if not does_exist:
         if __opts__['test']:
