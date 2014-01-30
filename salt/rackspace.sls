@@ -15,7 +15,7 @@ setup_domain:
   rackspace.dns_zone_exists:
     - name: {{ base_domain }}
     - email_address: {{ email }}
-    - ttl: 600
+    - ttl: 700
     - require:
       - pip: pyrax_setup
 
@@ -31,7 +31,7 @@ setup_instance:
 setup_records:
   rackspace.dns_record_exists:
     - zone_name: {{ base_domain }}
-    - name: testing.{{ base_domain }}
+    - name: localhost.{{ base_domain }}
     - record_type: A
     - data: 127.0.0.1
     - require:
@@ -40,10 +40,9 @@ setup_records:
 setup_records2:
   rackspace.dns_record_exists:
     - zone_name: {{ base_domain }}
-    - name: testing.{{ base_domain }}
+    - name: node1.{{ base_domain }}
     - record_type: A
     - data: {{ grains['ip_interfaces']['eth0']|first }}
-    - allow_multiple_records: True
     - require:
       - rackspace: setup_domain
 
