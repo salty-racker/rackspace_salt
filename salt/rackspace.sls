@@ -1,61 +1,55 @@
-python-pip:
-  pkg.installed
+{% set base_domain = 'rackspace-saltconf.com' %}
+{% set email = 'bruce.stringer@rackspace.com' %}
+{% set instance_name = 'salt_conf_instance' %}
+{% set db_name = 'salt_conf_db' %}
 
-pyrax:
+pyrax_setup:
+  pkg.installed:
+      - name: python-pip
   pip.installed:
+    - name: pyrax
     - require:
-      - pkg: python-pip
-
-setup_db:
-  rackspace.db_instance_exists:
-    - name: test123
-    - size: 1
-    - flavor: 1GB Instance
-    - require:
-      - pip: pyrax
-
-setup_db_2:
-  rackspace.db_instance_exists:
-    - name: testing_new_db
-    - size: 1
-    - flavor: 1GB Instance
-    - require:
-      - pip: pyrax
+      - pkg: pyrax_setup
 
 setup_domain:
   rackspace.dns_zone_exists:
-    - name: testingrackspacesalt1.com
-    - emailAddress: bruce.stringer@rackspace.com
+    - name: {{ base_domain }}
+    - email_address: {{ email }}
     - ttl: 600
     - require:
-      - pip: pyrax
+      - pip: pyrax_setup
+
+setup_instance:
+  rackspace.db_instance_exists:
+    - name: {{ instance_name }}
+    - size: 1
+    - flavor: 1GB Instance
+    - require:
+      - pip: pyrax_setup
+
 
 setup_records:
   rackspace.dns_record_exists:
-    - zone_name: testingrackspacesalt1.com
-    - name: testing.testingrackspacesalt1.com
+    - zone_name: {{ base_domain }}
+    - name: testing.{{ base_domain }}
     - record_type: A
     - data: 127.0.0.1
-    - allow_multiple_records: True
     - require:
       - rackspace: setup_domain
 
 setup_records2:
   rackspace.dns_record_exists:
-    - zone_name: testingrackspacesalt1.com
-    - name: testing.testingrackspacesalt1.com
+    - zone_name: {{ base_domain }}
+    - name: testing.{{ base_domain }}
     - record_type: A
     - data: 127.0.0.2
     - allow_multiple_records: True
     - require:
       - rackspace: setup_domain
 
-setup_records3:
-  rackspace.dns_record_exists:
-    - zone_name: testingrackspacesalt1.com
-    - name: testing.testingrackspacesalt1.com
-    - record_type: A
-    - data: 127.0.0.3
-    - allow_multiple_records: True
+setup_database:
+  rackspace.db_database_exists:
+    - name: {{ db_name }}
+    - instance_name: {{ instance_name }}
     - require:
-      - rackspace: setup_domain
+      - rackspace: setup_instance
