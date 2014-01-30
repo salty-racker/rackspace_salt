@@ -662,6 +662,11 @@ def db_instance_delete(name):
     return {name: {'deleted': True}}
 
 
+def db_instance_get_by_name(name):
+    instance = _db_instance_get_by_name(name)
+    return _db_instance_to_dict(instance)
+
+
 def db_database_create(name, instance_name, character_set=None, collate=None):
     """
     Creates a database on a given db instance

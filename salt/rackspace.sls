@@ -53,3 +53,15 @@ setup_database:
     - instance_name: {{ instance_name }}
     - require:
       - rackspace: setup_instance
+
+
+{% if salt['rackspace.db_instance_exists'](instance_name)%}
+add_instance_cname:
+  rackspace.dns_record_exists:
+    - name: {{ instance_name }}.{{ base_domain }}
+    - zone_name: {{ base_domain }}
+    - record_type: CNAME
+    - data: {{ salt['rackspace.db_instance_get_by_name'](instance_name)['hostname']}}
+    - requires:
+      - rackspace: setup_instance
+{% endif %}
