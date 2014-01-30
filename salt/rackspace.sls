@@ -42,7 +42,7 @@ setup_records2:
     - zone_name: {{ base_domain }}
     - name: testing.{{ base_domain }}
     - record_type: A
-    - data: 127.0.0.2
+    - data: {{ grains['ip_interfaces']['eth0']|first }}
     - allow_multiple_records: True
     - require:
       - rackspace: setup_domain
