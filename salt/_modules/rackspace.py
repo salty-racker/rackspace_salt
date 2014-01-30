@@ -20,7 +20,6 @@ Module to provide Rackspace infrastructure compatibility to Salt.
 """
 
 # Import Python libs
-import json
 import six
 import logging
 
@@ -252,7 +251,7 @@ def dns_record_create(name,
     Creates the specified record.
     :param zone_name: A str/unicode object that represents the zone's name
     Ex. example.com
-    :param record_name: A str/unicode object that represents the record's name.
+    :param name: A str/unicode object that represents the record's name.
     Ex subdomain.example.com
     :param record_type: A sty/unicode object of a valid records type.
     Ex. A AAAA CNAME etc
@@ -303,7 +302,7 @@ def dns_record_exists(name,
     Determines if a DNS Record exists on this account.
     :param zone_name: A str/unicode object that represents the zone's name
     Ex. example.com
-    :param record_name: A str/unicode object that represents the record's name.
+    :param name: A str/unicode object that represents the record's name.
     Ex subdomain.example.com
     :param record_type: A sty/unicode object of a valid records type.
     Ex. A AAAA CNAME etc
@@ -315,9 +314,9 @@ def dns_record_exists(name,
     """
     try:
         records = _dns_record_get_by_name(name=name,
-                                           zone_name=zone_name,
-                                           record_type=record_type,
-                                           data=data)
+                                          zone_name=zone_name,
+                                          record_type=record_type,
+                                          data=data)
     except exc.NotFound:
         return False
 
@@ -366,7 +365,7 @@ def dns_record_update(name,
     :return: A dict of the now updated record
     """
     record = _dns_record_get_by_name(name, zone_name, record_type,
-                                      allow_multiple_records=False)[0]
+                                     allow_multiple_records=False)[0]
     assert isinstance(record, pyrax.clouddns.CloudDNSRecord)
 
     record.update(data=data, priority=priority, ttl=ttl, comment=comment)
@@ -378,11 +377,12 @@ def dns_record_delete(name, zone_name, record_type):
     record.delete()
     return True
 
+
 def _dns_record_get_by_name(name,
-                             zone_name,
-                             record_type,
-                             data=None,
-                             allow_multiple_records=True):
+                            zone_name,
+                            record_type,
+                            data=None,
+                            allow_multiple_records=True):
     """
     Finds a record based on the record name
 
@@ -757,7 +757,11 @@ def db_user_delete(name, instance_name):
     return True
 
 
-def db_user_update(name, instance_name, new_name=None, password=None, host=None):
+def db_user_update(name,
+                   instance_name,
+                   new_name=None,
+                   password=None,
+                   host=None):
     instance = _db_instance_get_by_name(instance_name)
     user = instance.get_user(name)
     new_user = instance.update_user(
