@@ -67,6 +67,8 @@ def db_instance_exists(name, flavor, size, opts=False):
 
 def db_database_exists(name, instance_name, character_set=None, collate=None):
     ret = {'name': name, 'result': True, 'comment': '', 'changes': {}}
+    #TODO: Clean up the ClientException. Catching non existant
+    #  DBs as well as other exceptions
     try:
         does_exist = __salt__['rackspace.db_database_exists'](name, instance_name)
     except exc.ClientException as e:
@@ -223,6 +225,42 @@ def dns_record_exists(name, zone_name, record_type, data, ttl=None,
                     comment=comment)
 
                 ret['changes']['updated'] = updated
+    else:
+        ret['comment'] = u'{0} exists'.format(name)
+
+    return ret
+
+
+def cf_container_exists(name, cdn_enabled=None, ttl=None):
+    ret = {'name': name, 'result': True, 'comment': '', 'changes': {}}
+    does_exist = __salt__['rackspace.cf_container_exists'](
+        name,
+        cdn_enabled=cdn_enabled,
+        ttl=ttl)
+    
+    if not does_exist:
+        if __opts__['test']:
+            ret['result'] = None
+            ret['comment'] = u'Container {0} set to be created/updated'.format(
+                name)
+            return ret
+
+        base_exists = __salt__['rackspace.cf_container_exists'](name)
+        if not base_exists:
+
+            created = __salt__['rackspace.cf_container_create'](
+                name,
+                cdn_enabled=cdn_enabled,
+                ttl=ttl)
+
+            ret['changes']['new'] = created
+        else:
+            updated = __salt__['rackspace.cf_container_update'](
+                name,
+                cdn_enabled=cdn_enabled,
+                ttl=ttl)
+
+            ret['changes']['updated'] = updated
     else:
         ret['comment'] = u'{0} exists'.format(name)
 

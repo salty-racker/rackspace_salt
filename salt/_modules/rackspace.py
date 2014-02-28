@@ -662,11 +662,6 @@ def db_instance_delete(name):
     return {name: {'deleted': True}}
 
 
-def db_instance_get_by_name(name):
-    instance = _db_instance_get_by_name(name)
-    return _db_instance_to_dict(instance)
-
-
 def db_database_create(name, instance_name, character_set=None, collate=None):
     """
     Creates a database on a given db instance
@@ -780,7 +775,10 @@ def db_user_update(name,
 def _db_instance_get_by_name(name):
     driver = _get_driver('db')
     assert isinstance(driver, pyrax.CloudDatabaseClient)
-    instance = driver.find(name=name)
+    try:
+        instance = driver.find(name=name)
+    except exc.NotFound:
+        instance = None
     return instance
 
 
@@ -847,6 +845,120 @@ def _db_flavor_to_dict(flavor):
     """
     assert isinstance(flavor, pyrax.clouddatabases.CloudDatabaseFlavor)
     return {'name': flavor.name, 'ram': flavor.ram, 'id': flavor.id}
+
+
+### Cloud Files
+#TODO: Add Exception handling
+
+def cf_container_exists(name, cdn_enabled=None, ttl=None):
+    try:
+        container = _cf_container_get_by_name(name)
+    except exc.NoSuchContainer:
+        return False
+
+    if cdn_enabled is not None:
+        if cdn_enabled != container.cdn_enabled:
+            logger.debug(
+                u"CDN found to not match:: found: {0} -- provided {1}".format(
+                    container.cdn_enabled, cdn_enabled))
+            return False
+
+    if ttl is not None:
+        if ttl != container.cdn_ttl:
+            logger.debug(
+                u"CDN ttl not a match:: found: {0} -- provided {1}".format(
+                    container.cdn_ttl, ttl))
+            return False
+
+    return True
+
+
+def cf_container_list():
+    containers = _cf_container_list()
+    return [_cf_container_to_dict(container) for container in containers]
+
+
+def cf_container_create(name, cdn_enabled=None, ttl=None):
+    container = _cf_container_create(name, cdn_enabled=cdn_enabled, ttl=ttl)
+    return _cf_container_to_dict(container)
+
+
+def cf_container_get(name):
+    container = _cf_container_get_by_name(name)
+    return _cf_container_to_dict(container)
+
+
+def cf_container_delete(name):
+    container = _cf_container_get_by_name(name)
+    return _cf_container_delete(container)
+
+
+def cf_container_update(name, cdn_enabled, ttl=None):
+    container = _cf_container_get_by_name(name)
+    if cdn_enabled:
+        _cf_container_make_public(container, ttl=ttl)
+    else:
+        _cf_container_make_private(container)
+    return _cf_container_to_dict(container)
+
+
+def cf_container_make_public(name, ttl=None):
+    container = _cf_container_get_by_name(name)
+    _cf_container_make_public(container, ttl)
+    return _cf_container_to_dict(container)
+
+
+def cf_container_make_private(name):
+    container = _cf_container_get_by_name(name)
+    _cf_container_make_private(container)
+    return _cf_container_to_dict(container)
+
+
+def _cf_container_list():
+    driver = _get_driver('cf')
+    return driver.get_all_containers()
+
+
+def _cf_container_get_by_name(name):
+    driver = _get_driver('cf')
+    container = driver.get_container(name)
+    return container
+
+
+def _cf_container_create(name, cdn_enabled=None, ttl=None):
+    driver = _get_driver('cf')
+    container = driver.create_container(name)
+    if cdn_enabled is not None and cdn_enabled:
+        container = _cf_container_make_public(container, ttl)
+    return container
+
+
+def _cf_container_delete(container):
+    container.delete()
+    return True
+
+
+def _cf_container_make_public(container, ttl=None):
+    container.make_public(ttl=ttl)
+    return True
+
+
+def _cf_container_make_private(container):
+    container.make_private()
+    return True
+
+
+def _cf_container_to_dict(container):
+    return {
+        'name': container.name,
+        'cdn_enabled': container.cdn_enabled,
+        'cdn_ttl': container.cdn_ttl,
+        'cdn_log_retention': container.cdn_log_retention,
+        'cdn_uri': container.cdn_uri,
+        'cdn_ssl_uri': container.cdn_ssl_uri,
+        'cdn_streaming_uri': container.cdn_streaming_uri,
+        'cdn_ios_uri': container.cdn_ios_uri
+    }
 
 
 #### Utility Functions
